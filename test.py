@@ -52,6 +52,10 @@ def create_new_admin(admins):
         sql.execute(f"INSERT INTO admins(id, login) VALUES (?, ?)",(admins,new_admin_login.lower()))
         admin_db.commit()
         print("Новый администратор добавлен, его уникальный ID - ", admins)
+        logs_sql.execute("SELECT COUNT(id) FROM logs")
+        logs_id = (logs_sql.fetchone()[0])
+        logs_sql.execute(f"INSERT INTO logs(id, role, login, move, time) VALUES (?, ?, ?, ?, ?)",(logs_id, "администратор", login, "Добавил нового администратора", clock))
+        logs_db.commit()
     else:
         print("Администратор с таким именем уже есть")
 
@@ -59,6 +63,10 @@ def show_all():
     for login in sql.execute('SELECT * FROM admins'):
         print("ID        LOGIN")
         print(login[0],login[1])
+    logs_sql.execute("SELECT COUNT(id) FROM logs")
+    logs_id = (logs_sql.fetchone()[0])
+    logs_sql.execute(f"INSERT INTO logs(id, role, login, move, time) VALUES (?, ?, ?, ?, ?)",(logs_id, "администратор", login, "просмотрел список администрации", clock))
+    logs_db.commit()
 
 
 def who_is_you():
@@ -72,8 +80,6 @@ def who_is_you():
         check_admin_password(admin_password)
 def check_admin_login(input_login):
     sql.execute(f"SELECT login FROM admins WHERE login = '{input_login.lower()}'")
-    # for i in sql.execute(f"SELECT login FROM admins WHERE login = '{input_login.lower()}'"):
-    #     print(i)
     if sql.fetchone() is None:
         print("Такого администратора не существует!")
         who_is_you()
@@ -81,7 +87,7 @@ def check_admin_login(input_login):
         print("Привет, ", input_login)
         global login
         login = input_login
-        check_admin_password(admin_password)
+        check_admin_password(admin_password, login)
 
 
 def generate_id(table, name_table):
@@ -90,30 +96,54 @@ def generate_id(table, name_table):
     personal_id = table.fetchall()
 
 
-def check_admin_password(admin_password):
+def check_admin_password(admin_password, login):
     password = str(input("Введите пароль: "))
     if password == admin_password:
         print("Добро пожаловать!")
         generate_id(sql, "admins")
         print(personal_id)
+        logs_sql.execute("SELECT COUNT(id) FROM logs")
+        logs_id = (logs_sql.fetchone()[0])
+        logs_sql.execute(f"INSERT INTO logs(id, role, login, move, time) VALUES (?, ?, ?, ?, ?)",(logs_id, "администратор", login, "вошёл в систему", clock))
+        logs_db.commit()
     else:
         print("Вы ввели неверный пароль!")
-        check_admin_password(admin_password)
+        check_admin_password(admin_password, login)
+
+def check_time(result):
+    global clock
+    clock = "{0}.{1}.{2}. в {3}:{4}:{5}".format(result.tm_mday,result.tm_mon,result.tm_year,result.tm_hour,result.tm_min,result.tm_sec)
+
+
+def check_logs():
+    for log in logs_sql.execute("SELECT * FROM LOGS"):
+        print(log)
+    logs_sql.execute("SELECT COUNT(id) FROM logs")
+    logs_id = (logs_sql.fetchone()[0])
+    logs_sql.execute(f"INSERT INTO logs(id, role, login, move, time) VALUES (?, ?, ?, ?, ?)",(logs_id, "администратор", login, "проверил логи", clock))
+    logs_db.commit()
 
 admin_password = 'admin'
 
 while not done:
+    result = time.localtime()
+    check_time(result)
     who_is_you()
     while choice == 1:
+        result = time.localtime()
         admins = 0
-        move = int(input("Что будем делать?\nДобавить нового администратора - 1.\nПосмотреть список администрации - 2.\nВведите номер действия..."))
+        move = int(input("Что будем делать?\nДобавить нового администратора - 1.\nПосмотреть список администрации - 2.\nПосмотреть логи - 3.\nВведите номер действия..."))
         if move == 1:
+            check_time(result)
             create_new_admin(admins) 
         elif move == 2:
+            check_time(result)
             show_all()
-            result = time.localtime()
-            time = "{0}.{1}.{2}. в {3}:{4}:{5}".format(result.tm_mday,result.tm_mon,result.tm_year,result.tm_hour,result.tm_min,result.tm_sec)
-            print(time)
+        elif move == 3:
+            check_time(result)
+            print("\n\nЗапускаю проверку логов....\n\n\n\n")
+            check_logs()
+            print("\n\n\nЛоги успешно проверены.\n\n")
         else:
             print("Вы ввели что-то непонятное!") 
     while choice == 2:
